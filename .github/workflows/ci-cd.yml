@@ -13,10 +13,12 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       matrix:
         python-version: [3.9, 3.10]
         scala-version: [2.12.15, 2.13.8]
+      fail-fast: false
     
     services:
       postgres:
@@ -32,14 +34,30 @@ jobs:
         ports:
           - 5432:5432
       
+      zookeeper:
+        image: confluentinc/cp-zookeeper:7.4.0
+        env:
+          ZOOKEEPER_CLIENT_PORT: 2181
+          ZOOKEEPER_TICK_TIME: 2000
+        ports:
+          - 2181:2181
+      
       kafka:
         image: confluentinc/cp-kafka:7.4.0
+        depends-on: zookeeper
         env:
-          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+          KAFKA_ZOOKEEPER_CONNECT: localhost:2181
           KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
         ports:
           - 9092:9092
+        options: >-
+          --health-cmd "kafka-broker-api-versions --bootstrap-server localhost:9092"
+          --health-interval 20s
+          --health-timeout 10s
+          --health-retries 5
+          --health-start-period 40s
 
     steps:
     - uses: actions/checkout@v4
@@ -50,10 +68,11 @@ jobs:
         python-version: ${{ matrix.python-version }}
     
     - name: Set up JDK 11
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '11'
         distribution: 'temurin'
+        cache: 'maven'
     
     - name: Set up Scala
       uses: olafurpg/setup-scala@v13
@@ -61,7 +80,7 @@ jobs:
         java-version: '11'
     
     - name: Cache Python dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -69,7 +88,7 @@ jobs:
           ${{ runner.os }}-pip-
     
     - name: Cache SBT dependencies
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.sbt
         key: ${{ runner.os }}-sbt-${{ hashFiles('**/build.sbt') }}
@@ -240,3 +259,4 @@ jobs:
         echo "Running performance tests..."
         # Add performance test commands here
         # For example, using k6, JMeter, or custom scripts
+
