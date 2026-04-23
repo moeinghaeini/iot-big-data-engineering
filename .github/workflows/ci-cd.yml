@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       matrix:
-        python-version: [3.9, 3.10]
+        python-version: ["3.9", "3.10"]
         scala-version: [2.12.15, 2.13.8]
       fail-fast: false
     
@@ -44,7 +44,6 @@ jobs:
       
       kafka:
         image: confluentinc/cp-kafka:7.4.0
-        depends-on: zookeeper
         env:
           KAFKA_ZOOKEEPER_CONNECT: localhost:2181
           KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
